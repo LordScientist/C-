@@ -2,12 +2,15 @@
 #include <string>
 #include <vector>
 #include <limits>
+#include <fstream>
+#include <sstream>
 
 using std::string;
 using std::cout;
 using std::cin;
 using std::endl;
 using std::vector;
+using std::stringstream;
 
 class Account
     {
@@ -15,9 +18,9 @@ class Account
             double balance;
 
         public:
-            Account()
+            Account(double startingBalance)
                 {
-                    balance = 1000.00;
+                    balance = startingBalance;
                 }
 
         public:
@@ -144,7 +147,7 @@ class User
             vector<Transaction*> history;
 
         public:
-            User(string name,string pin,string number)
+            User(string name,string pin,string number,double startingBalance) : account(startingBalance)
                 {
                     this -> name = name;
                     this -> pin = pin;
@@ -191,6 +194,10 @@ class User
                 {
                     return number;
                 }
+            string getPin() const
+                {
+                    return pin;
+                }
 
     };
 
@@ -223,6 +230,52 @@ double getValidAmount()
 
 
 
+std::vector<User> loadUsers()
+            {
+                // This part takes a file called users.txt and input it into our code
+                std::ifstream inputFile("users.txt");
+                if(!inputFile)
+                    {
+                        std::vector<User>empty;
+                        return empty;
+                    }
+                std::vector<User> users;
+                string line;
+                // This loop goes through the inputFile and then assign each line of users and their credentials to line 
+                while (getline(inputFile,line))
+                    {
+                        // This will break the whole line block into separate pieces
+                        stringstream ss(line);
+                        string userName,userNumber, userPin, balanceStr;
+
+                        // This will go to ss,parse it into userName but it will do it up to a comma.It only parses it and stops when there is a commma. 
+                        getline(ss,userName,',');
+                        getline(ss,userNumber,',');
+                        getline(ss,userPin,',');
+                        getline(ss,balanceStr,',');
+                        // stod means string to double
+                        double balance = std::stod(balanceStr);
+                        users.push_back(User(userName,userPin,userNumber,balance));
+                    }
+
+                return users;
+            }
+
+
+void saveUsers(std::vector<User> & users)
+            {
+                // This will create and write into a file users.txt
+                std::ofstream outputFile("users.txt");
+                for(int i = 0;i < users.size();i++)
+                    {
+                        outputFile << users[i].getName()<<",";
+                        outputFile << users[i].getNumber()<<",";
+                        outputFile << users[i].getPin()<<",";
+                        outputFile << users[i].getAccount().getBalance()<<","<<"\n";
+
+                    }
+            }
+
 
 int main()
     {
@@ -230,7 +283,7 @@ int main()
         string pin;
         string number;
 
-        std::vector<User> users;
+        std::vector<User> users = loadUsers();
 
         int choice;
         do
@@ -260,7 +313,8 @@ int main()
                                 cin >> number;
                                 cout << "Enter a 4 digit code to create a mobile pin:\n";
                                 cin >> pin;
-                                users.push_back(User(name,pin,number));
+                                users.push_back(User(name,pin,number,1000.00));
+                                saveUsers(users);
                                 cout << "Hurray,you are now part of the family "<< name <<endl;
                                 break;
                             }
@@ -295,6 +349,7 @@ int main()
                                                 {
                                                     Transaction* t = new Deposit(amount);
                                                     found->addTransaction(t);
+                                                    saveUsers(users);
                                                     cout << "You have successfully deposited GHC " << amount <<endl;
                                                     cout << "Current balance is : GHC " << found ->getAccount().getBalance();
                                                 }            
@@ -338,6 +393,7 @@ int main()
                                             {
                                                 Transaction* t = new Withdrawal(amount);
                                                 found->addTransaction(t);
+                                                saveUsers(users);
                                                 cout << "You have successfully withdrawn GHC "<<amount << endl;
 
                                                 cout << "Your current balance is GHC "<< 
@@ -407,6 +463,7 @@ int main()
                                                                     {
                                                                         Transaction* t2 = new Transfer(amount,sender->getName(),false);
                                                                         receipient->addTransaction(t2);
+                                                                        saveUsers(users);
                                                                         cout <<"----------\n";
                                                                         cout << "You have successfully sent GHC "<<amount<<" to "<<receipient->getName()<<endl;
                                                                         cout << "Your current balance is GHC "<< sender->getAccount().getBalance();
